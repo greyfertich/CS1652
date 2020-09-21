@@ -30,12 +30,15 @@ main(int argc, char ** argv)
     int    server_port = -1;
     char * server_path = NULL;
     char * req_str     = NULL;
+    char response[BUFSIZE], status[BUFSIZE], header[BUFSIZE], content[BUFSIZE];
+    char * status_line_end, * header_end;
 
     int ret = 0;
     int res = 0;
     int sockfd = 0;
     struct hostent * serverIP;
     struct sockaddr_in server_address;
+    //fd_set rset;
 
     /*parse args */
     if (argc != 4) {
@@ -47,6 +50,7 @@ main(int argc, char ** argv)
     server_port = atoi(argv[2]);
     server_path = argv[3];
 
+    ssize_t rv;
 
 
     ret = asprintf(&req_str, "GET %s HTTP/1.0\r\n\r\n", server_path);
@@ -60,8 +64,6 @@ main(int argc, char ** argv)
      * NULL accesses to quiesce compiler errors
      * Delete the following lines
      */
-    //(void)server_name;
-    //(void)server_port;
 
     /* make socket */
     if ((sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
@@ -95,28 +97,39 @@ main(int argc, char ** argv)
     }
     /* wait till socket can be read. */
     /* Hint: use select(), and ignore timeout for now. */
-    if ((res = read(sockfd, req_str, sizeof(req_str)-1)) <= 0) {
-      fprintf(stderr, "Error reading from socket\n");
+
+    /* first read loop -- read headers */
+    memset(response, 0, sizeof(response));
+
+    if ((rv = recv(sockfd, response, sizeof(response), MSG_WAITALL)) < 0) {
+      perror("pError: ");
+      fprintf(stderr, "Error receiving response");
       exit(-1);
     }
-    req_str[res] = 0;
-    printf("received: %s", req_str);
-    close(sockfd);
-    return 0;
-    /* first read loop -- read headers */
-
     /* examine return code */
+    response[rv] = '\0';
 
     //Skip "HTTP/1.0"
     //remove the '\0'
 
+    status_line_end = strstr(response, "\r\n");
+    strncpy(status, response, (int) (status_line_end-response));
+    status[(int) (status_line_end-response)] = '\0';
+
     // Normal reply has return code 200
+    printf("Status Line: %s\n\n", status);
 
     /* print first part of response: header, error code, etc. */
+    header_end = strstr(status_line_end+2, "\r\n\r\n");
+    strncpy(header, status_line_end+2, (int) (header_end-status_line_end));
+    header[(int) (header_end-status_line_end)] = '\0';
+    printf("Response: \n%s\n", header);
 
     /* second read loop -- print out the rest of the response: real web content */
-
+    strcpy(content, header_end+4);
+    printf("Content: \n%s\n", content);
     /*close socket and deinitialize */
-
+    close(sockfd);
+    return 0;
 
 }
