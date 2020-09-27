@@ -40,7 +40,10 @@ handle_connection(int sock)
 	(void)notok_response;  // DELETE ME
 	(void)ok_response_f;   // DELETE ME
     int len = 0;
-    char buf[BUFSIZE];
+    char buf[BUFSIZE], filename[BUFSIZE];
+    char * filename_start, * filename_end;
+    FILE * requested_file;
+
     memset(buf, 0, sizeof(buf));
     /* first read loop -- get request and headers*/
     if ((len = read(sock, buf, sizeof(buf))) <= 0) {
@@ -51,14 +54,30 @@ handle_connection(int sock)
     printf("REQUEST RECEIVED: \n%s", buf);
     /* parse request to get file name */
     /* Assumption: this is a GET request and filename contains no spaces*/
+    filename_start = strchr(buf, ' ') + 1;
+    filename_end = strchr(filename_start, ' ');
+    strncpy(filename, filename_start, (int) (filename_end - filename_start));
+    filename[(int) (filename_end - filename_start)] = '\0';
+    printf("Received request for file: %s", filename);
 
     /* open and read the file */
+    if ((requested_file = fopen(filename, "r")) == NULL) {
+      // Construct HTTP error response
+    } else {
+      // Send file in http response
+    }
+
+
 
 	/* send response */
     memset(buf, 0, sizeof(buf));
-    snprintf((char*) buf, sizeof(buf), "HTTP/1.0 200 OK/r/n/r/n/Hello");
+    snprintf((char*) buf, sizeof(buf), "HTTP/1.0 200 OK\r\n\r\nHello");
     printf("\nSending message: %s\n", buf);
-    write(sock, (char*) buf, strlen((char *) buf));
+
+    if ((len = write(sock, (char*) buf, strlen((char *) buf))) <= 0) {
+      fprintf(stderr, "Error writing to socket\n");
+      exit(-1);
+    }
     /* close socket and free pointers */
     close(sock);
 	return 0;
@@ -90,7 +109,7 @@ main(int argc, char ** argv)
 
     /* initialize and make socket */
     if ((sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
-      fprintf(stderr, "Error creating socket");
+      fprintf(stderr, "Error creating socket\n");
       exit(-1);
     }
 
@@ -102,13 +121,13 @@ main(int argc, char ** argv)
 
     /* bind listening socket */
     if (bind(sock, (struct sockaddr *) &saddr, sizeof(saddr)) < 0) {
-      fprintf(stderr, "Error binding to socket");
+      fprintf(stderr, "Error binding to socket\n");
       exit(-1);
     }
 
     /* start listening */
     if (listen(sock, 32) < 0) {
-      fprintf(stderr, "Error listening on socket");
+      fprintf(stderr, "Error listening on socket\n");
       exit(-1);
     }
     /* connection handling loop: wait to accept connection */

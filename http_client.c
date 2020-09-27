@@ -106,8 +106,15 @@ main(int argc, char ** argv)
       fprintf(stderr, "Error receiving response");
       exit(-1);
     }
-    /* examine return code */
     response[rv] = '\0';
+    /* examine return code */
+    status_line_end = strstr(response, "\r\n");
+    strncpy(status, response, (int) (status_line_end-response));
+    status[(int) (status_line_end-response)] = '\0';
+    if (strstr(status, "OK") == NULL) {
+      fprintf(stderr, "Error: Bad Request\n");
+      exit(-1);
+    }
 
     //Skip "HTTP/1.0"
     //remove the '\0'
@@ -123,7 +130,7 @@ main(int argc, char ** argv)
     header_end = strstr(status_line_end+2, "\r\n\r\n");
     strncpy(header, status_line_end+2, (int) (header_end-status_line_end));
     header[(int) (header_end-status_line_end)] = '\0';
-    printf("Response: \n%s\n", header);
+    printf("Header: \n%s\n", header);
 
     /* second read loop -- print out the rest of the response: real web content */
     strcpy(content, header_end+4);
