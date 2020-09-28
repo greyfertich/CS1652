@@ -132,7 +132,14 @@ main(int argc, char ** argv)
 
     /* second read loop -- print out the rest of the response: real web content */
     memset(content, 0, sizeof(content));
-    strcpy(content, header_end+4);
+    if (strlen(header_end+4) + ((int) (header_end-response)) < 1024) {
+        strcpy(content, header_end+4);
+        content[strlen(header_end+4)]  = '\0';
+    } else {
+      strncpy(content, header_end+4, BUFSIZE-((int) (header_end-response+4)));
+      content[BUFSIZE-1] = '\0';
+    }
+
     printf("Content: \n%s\n", content);
 
     /*close socket and deinitialize */
