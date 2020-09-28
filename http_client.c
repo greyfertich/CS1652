@@ -38,7 +38,6 @@ main(int argc, char ** argv)
     int sockfd = 0;
     struct hostent * serverIP;
     struct sockaddr_in server_address;
-    //fd_set rset;
 
     /*parse args */
     if (argc != 4) {
@@ -49,9 +48,7 @@ main(int argc, char ** argv)
     server_name = argv[1];
     server_port = atoi(argv[2]);
     server_path = argv[3];
-
     ssize_t rv;
-
 
     ret = asprintf(&req_str, "GET %s HTTP/1.0\r\n\r\n", server_path);
 
@@ -107,6 +104,7 @@ main(int argc, char ** argv)
       exit(-1);
     }
     response[rv] = '\0';
+
     /* examine return code */
     status_line_end = strstr(response, "\r\n");
     strncpy(status, response, (int) (status_line_end-response));
@@ -133,8 +131,10 @@ main(int argc, char ** argv)
     printf("Header: \n%s\n", header);
 
     /* second read loop -- print out the rest of the response: real web content */
+    memset(content, 0, sizeof(content));
     strcpy(content, header_end+4);
     printf("Content: \n%s\n", content);
+
     /*close socket and deinitialize */
     close(sockfd);
     return 0;

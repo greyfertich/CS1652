@@ -37,10 +37,8 @@ handle_connection(int sock)
         					"<h2>404 FILE NOT FOUND</h2>\n"
         					"</body></html>\n";
 
-	(void)notok_response;  // DELETE ME
-	(void)ok_response_f;   // DELETE ME
-    int len = 0;
-    char buf[BUFSIZE], filename[BUFSIZE];
+    int len = 0, written_chars;
+    char buf[BUFSIZE], filename[BUFSIZE], response[BUFSIZE];
     char * filename_start, * filename_end;
     FILE * requested_file;
 
@@ -51,29 +49,39 @@ handle_connection(int sock)
       exit(-1);
     }
     buf[len] = 0;
-    printf("REQUEST RECEIVED: \n%s", buf);
+
     /* parse request to get file name */
     /* Assumption: this is a GET request and filename contains no spaces*/
     filename_start = strchr(buf, ' ') + 1;
     filename_end = strchr(filename_start, ' ');
     strncpy(filename, filename_start, (int) (filename_end - filename_start));
     filename[(int) (filename_end - filename_start)] = '\0';
-    printf("Received request for file: %s", filename);
+    printf("Received request for file: %s\n", filename);
+    memset(buf, 0, sizeof(buf));
 
     /* open and read the file */
     if ((requested_file = fopen(filename, "r")) == NULL) {
+
       // Construct HTTP error response
+      strcpy(buf, notok_response);
+      printf("Error retrieving file: %s\n", filename);
     } else {
+
       // Send file in http response
+      memset(buf, 0, sizeof(buf));
+      size_t newLen = fread(response, sizeof(char), BUFSIZE, requested_file);
+      written_chars = sprintf(buf, ok_response_f, (int) newLen);
+
+      if (sizeof(response) + written_chars < BUFSIZE) {
+        strncpy(buf+written_chars, response, sizeof(response));
+        buf[written_chars + sizeof(response)] = '\0';
+      } else {
+        strncpy(buf+written_chars, response, sizeof(response)-written_chars);
+        buf[BUFSIZE-1] = '\0';
+      }
     }
 
-
-
 	/* send response */
-    memset(buf, 0, sizeof(buf));
-    snprintf((char*) buf, sizeof(buf), "HTTP/1.0 200 OK\r\n\r\nHello");
-    printf("\nSending message: %s\n", buf);
-
     if ((len = write(sock, (char*) buf, strlen((char *) buf))) <= 0) {
       fprintf(stderr, "Error writing to socket\n");
       exit(-1);
@@ -91,7 +99,6 @@ main(int argc, char ** argv)
     int ret         =  0;
     int sock        = -1;
     int sock2 = -1;
-    int counter = 1;
     struct sockaddr_in saddr;
 
     /* parse command line args */
@@ -131,11 +138,9 @@ main(int argc, char ** argv)
       exit(-1);
     }
     /* connection handling loop: wait to accept connection */
-    //sock2 = accept(sock, NULL, NULL);
 
     while (1) {
         /* handle connections */
-        printf("\n%d\n", counter++);
         sock2 = accept(sock, NULL, NULL);
         ret = handle_connection(sock2);
     }
